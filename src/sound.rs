@@ -38,36 +38,28 @@ pub fn play_sound(name: &str, volume: u16) {
 
 pub fn worker(rx_channel: Receiver<String>) {
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    loop {
-        while let Ok(raw) = rx_channel.recv_timeout(Duration::from_secs(20)) {
-            // The data sent format is <file_name>;<volume>.
-            let data: Vec<&str> = raw.split(';').collect();
-            let name = data[0].to_string();
-            let volume = data[1].parse::<u16>().expect("Cannot parse volume.");
-            let file_name = name.to_string();
-            let source = {
-                let mut sound_map = GLOBAL_DATA.lock().unwrap();
-                sound_map
-                    .entry(name.clone())
-                    .or_insert_with(|| {
-                        let file = BufReader::new(File::open(&file_name[..]).unwrap());
-                        Decoder::new(file).unwrap().buffered()
-                    })
-                    .clone()
-            };
-            let sink = rodio_wav_fix::Sink::try_new(&stream_handle).unwrap();
-            // Since sink.set_volume accepts value from range (0 - 1.0), the pased volume
-            // should be divided by 100.
-            let vol = volume as f32 / 100.0;
-            sink.set_volume(vol);
-            sink.append(source);
-            sink.detach();
-        }
-        std::thread::yield_now();
-        // else {
-        //     // Timeout, time to put this thread to sleep to save CPU cycles (open audio OutputStreams use
-        //     // around half a CPU millicore, and then CoreAudio uses another 7-10%)
-        //     break;
-        // }
+    while let Ok(raw) = rx_channel.recv_timeout(Duration::from_secs(20)) {
+        // The data sent format is <file_name>;<volume>.
+        let data: Vec<&str> = raw.split(';').collect();
+        let name = data[0].to_string();
+        let volume = data[1].parse::<u16>().expect("Cannot parse volume.");
+        let file_name = name.to_string();
+        let source = {
+            let mut sound_map = GLOBAL_DATA.lock().unwrap();
+            sound_map
+                .entry(name.clone())
+                .or_insert_with(|| {
+                    let file = BufReader::new(File::open(&file_name[..]).unwrap());
+                    Decoder::new(file).unwrap().buffered()
+                })
+                .clone()
+        };
+        let sink = rodio_wav_fix::Sink::try_new(&stream_handle).unwrap();
+        // Since sink.set_volume accepts value from range (0 - 1.0), the pased volume
+        // should be divided by 100.
+        let vol = volume as f32 / 100.0;
+        sink.set_volume(vol);
+        sink.append(source);
+        sink.detach();
     }
 }
