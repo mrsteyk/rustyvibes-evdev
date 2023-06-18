@@ -32,7 +32,7 @@ pub fn play_sound(name: &str, volume: u16) {
     if tx.is_disconnected() {
         *tx = new_worker()
     }
-    tx.send(format!("{};{}", name, volume.to_string()))
+    tx.send(format!("{};{}", name, volume))
         .expect("Couldn't send name to threadpool");
 }
 
@@ -63,7 +63,7 @@ pub fn worker(rx_channel: Receiver<String>) {
             sink.append(source);
             sink.detach();
         }
-        std::thread::yield_now(); 
+        std::thread::yield_now();
         // else {
         //     // Timeout, time to put this thread to sleep to save CPU cycles (open audio OutputStreams use
         //     // around half a CPU millicore, and then CoreAudio uses another 7-10%)
